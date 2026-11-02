@@ -11,8 +11,8 @@
 
 ### Architecture & Game State Machine
 - [x] Refactor game loop out of `main.py` into a structured state manager in `src/game.py`
-- [ ] Implement scene management interface (`TitleScene`, `GameScene`, `LevelClearScene`, `PauseScene`)
-- [ ] Create a centralized input handler to support both keyboard and future gamepad controls
+- [x] Implement scene management interface (`TitleScene`, `GameScene`, `LevelClearScene`, `PauseScene`)
+- [x] Create a centralized input handler to support both keyboard and future gamepad controls
 
 ### Movement & Polish
 - [ ] Implement smooth tile interpolation (lerping / tweening) instead of instant coordinate snapping
