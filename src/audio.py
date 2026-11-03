@@ -26,6 +26,10 @@ class AudioManager:
         self.error_buzz_sound = self._create_error_buzz_sound() if self.enabled else None
         self.shift_whoosh_sound = self._create_shift_whoosh_sound() if self.enabled else None
         self.reboot_sound = self._create_reboot_sound() if self.enabled else None
+        self.push_sound = self._create_block_push_sound() if self.enabled else None
+        self.switch_sound = self._create_switch_click_sound() if self.enabled else None
+        self.daemon_step_sound = self._create_daemon_step_sound() if self.enabled else None
+        self.alarm_sound = self._create_alarm_sound() if self.enabled else None
 
     def _create_bump_sound(self) -> pygame.mixer.Sound | None:
         """
@@ -171,6 +175,35 @@ class AudioManager:
             print(f"[Audio] Could not synthesize reboot chime: {e}")
             return None
 
+    def _create_block_push_sound(self) -> pygame.mixer.Sound | None:
+        """
+        Synthesizes a deep metallic clunk & floor scrape (90ms)
+        when pushing heavy server RAM blocks across the floor.
+        """
+        try:
+            sample_rate = 44100
+            duration = 0.09  # 90 milliseconds
+            total_samples = int(sample_rate * duration)
+            raw_data = bytearray()
+
+            for i in range(total_samples):
+                t = i / sample_rate
+                progress = i / total_samples
+
+                # Deep thud dropping from 180Hz down to 60Hz + subtle noise crunch
+                freq = 180.0 - (120.0 * progress)
+                vol = (1.0 - progress) ** 1.8
+
+                # Add subtle metallic harmonic tone (freq * 2.5)
+                tone = math.sin(2.0 * math.pi * freq * t) + (0.35 * math.sin(2.0 * math.pi * freq * 2.5 * t))
+                sample_val = int(32767 * 0.32 * vol * (tone / 1.35))
+                raw_data.extend(struct.pack("<h", sample_val))
+
+            return pygame.mixer.Sound(buffer=bytes(raw_data))
+        except Exception as e:
+            print(f"[Audio] Could not synthesize push sound: {e}")
+            return None
+
     def play_bump(self):
         """Plays the wall bump thud."""
         if self.enabled and self.bump_sound:
@@ -195,3 +228,87 @@ class AudioManager:
         """Plays the server terminal reboot chime."""
         if self.enabled and self.reboot_sound:
             self.reboot_sound.play()
+
+    def play_block_push(self):
+        """Plays the metallic crate push clunk."""
+        if self.enabled and self.push_sound:
+            self.push_sound.play()
+
+    def _create_switch_click_sound(self) -> pygame.mixer.Sound | None:
+        """
+        Synthesizes a crisp 40ms mechanical switch click (900Hz -> 500Hz)
+        when stepping on or placing a block onto a pressure plate.
+        """
+        try:
+            sample_rate = 44100
+            duration = 0.04  # 40 milliseconds
+            total_samples = int(sample_rate * duration)
+            raw_data = bytearray()
+
+            for i in range(total_samples):
+                t = i / sample_rate
+                prog = i / total_samples
+                freq = 900.0 - (400.0 * prog)
+                vol = (1.0 - prog) ** 3.0
+
+                sample_val = int(32767 * 0.35 * vol * math.sin(2.0 * math.pi * freq * t))
+                raw_data.extend(struct.pack("<h", sample_val))
+
+            return pygame.mixer.Sound(buffer=bytes(raw_data))
+        except Exception as e:
+            print(f"[Audio] Could not synthesize switch sound: {e}")
+            return None
+
+    def play_switch_click(self):
+        """Plays the pressure plate click sound."""
+        if self.enabled and self.switch_sound:
+            self.switch_sound.play()
+
+    def _create_daemon_step_sound(self) -> pygame.mixer.Sound | None:
+        """Synthesizes a short mechanical servo tick (50ms) for patrolling sentinels."""
+        try:
+            sample_rate = 44100
+            duration = 0.05
+            total_samples = int(sample_rate * duration)
+            raw_data = bytearray()
+
+            for i in range(total_samples):
+                t = i / sample_rate
+                prog = i / total_samples
+                freq = 300.0 - (150.0 * prog)
+                vol = (1.0 - prog) ** 2.0
+                sample_val = int(32767 * 0.25 * vol * math.sin(2.0 * math.pi * freq * t))
+                raw_data.extend(struct.pack("<h", sample_val))
+
+            return pygame.mixer.Sound(buffer=bytes(raw_data))
+        except Exception:
+            return None
+
+    def _create_alarm_sound(self) -> pygame.mixer.Sound | None:
+        """Synthesizes an alarm siren burst (160ms) when detected by a daemon."""
+        try:
+            sample_rate = 44100
+            duration = 0.16
+            total_samples = int(sample_rate * duration)
+            raw_data = bytearray()
+
+            for i in range(total_samples):
+                t = i / sample_rate
+                freq = 600.0 + 300.0 * math.sin(2.0 * math.pi * 15.0 * t)
+                vol = math.sin(math.pi * (i / total_samples))
+                sample_val = int(32767 * 0.35 * vol * math.sin(2.0 * math.pi * freq * t))
+                raw_data.extend(struct.pack("<h", sample_val))
+
+            return pygame.mixer.Sound(buffer=bytes(raw_data))
+        except Exception:
+            return None
+
+    def play_daemon_step(self):
+        """Plays the sentinel patrol servo step."""
+        if self.enabled and self.daemon_step_sound:
+            self.daemon_step_sound.play()
+
+    def play_alarm(self):
+        """Plays the alert siren."""
+        if self.enabled and self.alarm_sound:
+            self.alarm_sound.play()

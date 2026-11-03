@@ -24,7 +24,7 @@
   - [x] Restore player position
   - [x] Restore dimension state (Normal vs. Corrupted)
   - [x] Restore rebooted terminal states
-  - [ ] Restore block positions (for upcoming mechanics)
+  - [x] Restore block positions (for upcoming mechanics)
 - [x] Implement **Instant Restart (`R`)** with zero loading time
 - [x] Implement **Level Select / Skip Menu** for debugging and playtesting
 
@@ -40,18 +40,18 @@
 *Goal: Introduce new puzzle elements that interact across both dimensions, and build the soundscape.*
 
 ### New Dimension-Interacting Mechanics
-- [ ] **RAM Blocks (Pushable Memory Crates)**:
-  - [ ] Pushable by player if space behind is clear
-  - [ ] Can exist in Normal, Corrupted, or Both dimensions
-  - [ ] Usable to weigh down pressure plates or block laser paths
-- [ ] **Firewalls / Conduits (Laser Barriers)**:
-  - [ ] Laser beams active in one dimension and harmless conduits in the other
-  - [ ] Blocks player movement when active
-- [ ] **Corrupted Daemons / Sentinels**:
-  - [ ] Security subroutines that patrol fixed paths
-  - [ ] Only move / alert when the player is inside the Corrupted Dimension
-- [ ] **Data Pressure Plates**:
-  - [ ] Toggle firewalls or open access gates when pressed by player or RAM blocks
+- [x] **RAM Blocks (Pushable Memory Crates)**:
+  - [x] Pushable by player if space behind is clear
+  - [x] Can exist in Normal, Corrupted, or Both dimensions
+  - [x] Usable to weigh down pressure plates or block laser paths
+- [x] **Firewalls / Conduits (Laser Barriers)**:
+  - [x] Laser beams active in one dimension and harmless conduits in the other
+  - [x] Blocks player movement when active
+- [x] **Corrupted Daemons / Sentinels**:
+  - [x] Security subroutines that patrol fixed paths
+  - [x] Only move / alert when the player is inside the Corrupted Dimension
+- [x] **Data Pressure Plates**:
+  - [x] Toggle firewalls or open access gates when pressed by player or RAM blocks
 
 ### Audio System & Sound Design
 - [ ] Initialize `pygame.mixer` with dedicated channels (Music, SFX, UI)

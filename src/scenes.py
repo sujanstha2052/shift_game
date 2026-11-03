@@ -26,6 +26,8 @@ class StateSnapshot:
     facing_y: int
     is_corrupted: bool
     terminals_rebooted: tuple[bool, ...]
+    blocks_state: tuple[tuple[int, int], ...]
+    daemons_state: tuple[tuple[int, int, int, int], ...]
 
 
 class Scene:
@@ -150,6 +152,10 @@ class GameScene(Scene):
         self.shift_transition_timer = 0
         self.shift_max_frames = 12
 
+        # Daemon Detection State
+        self.is_caught = False
+        self.alert_font = pygame.font.SysFont("monospace", 22, bold=True)
+
     def trigger_shift_rejection(self):
         """Triggers screen shake, red strobe flash, and buzzer on invalid shift."""
         self.shake_timer = 10
@@ -160,6 +166,7 @@ class GameScene(Scene):
 
     def restart_level(self):
         """Quick restart of current puzzle."""
+        self.is_caught = False
         self.load_level(self.level_index)
 
     def load_level(self, index: int):
@@ -169,6 +176,7 @@ class GameScene(Scene):
         start_x, start_y = self.level.player_start
         self.player.reset_position(start_x, start_y)
         self.history.clear()
+        self.is_caught = False
 
     def save_snapshot(self):
         """Saves current state to history before a move/shift executes."""
@@ -179,6 +187,8 @@ class GameScene(Scene):
             facing_y=self.player.facing_y,
             is_corrupted=self.level.is_corrupted,
             terminals_rebooted=tuple(t.rebooted for t in self.level.terminals),
+            blocks_state=tuple((b.grid_x, b.grid_y) for b in self.level.blocks),
+            daemons_state=tuple((d.grid_x, d.grid_y, d.point_index, d.direction) for d in self.level.daemons),
         )
         self.history.append(snapshot)
 
@@ -188,6 +198,7 @@ class GameScene(Scene):
             return
 
         snapshot = self.history.pop()
+        self.is_caught = False
 
         # 1. Restore Player position and orientation
         self.player.reset_position(snapshot.player_x, snapshot.player_y)
@@ -201,25 +212,63 @@ class GameScene(Scene):
         for terminal, was_rebooted in zip(self.level.terminals, snapshot.terminals_rebooted):
             terminal.rebooted = was_rebooted
 
-        # 4. Play audio rewind blip
+        # 4. Restore RAM Blocks
+        for block, (bx, by) in zip(self.level.blocks, snapshot.blocks_state):
+            block.reset_position(bx, by)
+
+        # 5. Restore Daemons
+        for daemon, (dx, dy, idx, direct) in zip(self.level.daemons, snapshot.daemons_state):
+            daemon.reset_state(dx, dy, idx, direct)
+
+        # 6. Play audio rewind blip
         self.game.audio.play_undo()
 
     def try_move_player(self, dx: int, dy: int):
-        """Attempts to move the player; saves undo state on success, or bumps on wall."""
-        if self.player.is_moving:
+        """Attempts to move the player or push RAM blocks; handles bump & push sounds."""
+        if self.player.is_moving or self.is_caught:
             return
 
         new_x = self.player.grid_x + dx
         new_y = self.player.grid_y + dy
 
-        if not self.level.is_solid(new_x, new_y):
-            # Save undo snapshot BEFORE updating position
-            self.save_snapshot()
-            self.player.move(dx, dy, self.level)
-        else:
-            # Trigger wall bump and thump sound
+        # 1. Wall Obstruction: cannot move or push
+        if self.level.is_wall(new_x, new_y):
             self.player.move(dx, dy, self.level)
             self.game.audio.play_bump()
+            return
+
+        # 2. Active Laser Obstruction: lethal barrier blocks player
+        if self.level.is_laser_active_at(new_x, new_y):
+            self.player.move(dx, dy, self.level)
+            self.game.audio.play_error_buzz()
+            return
+
+        # 3. RAM Block: check if push is possible
+        block = self.level.get_block_at(new_x, new_y)
+        if block is not None:
+            # Check if tile behind block is clear
+            if self.level.try_push_block(block, dx, dy):
+                # Successful push! Save undo, move player into vacated tile, play clunk
+                self.save_snapshot()
+                self.player.move(dx, dy, self.level)
+                self.game.audio.play_block_push()
+
+                # Patrol daemons take 1 step if in Corrupted Dimension
+                if self.level.is_corrupted and self.level.step_daemons():
+                    self.game.audio.play_daemon_step()
+            else:
+                # Block is blocked by a wall or other obstacle
+                self.player.move(dx, dy, self.level)
+                self.game.audio.play_bump()
+            return
+
+        # 4. Open Floor: standard movement
+        self.save_snapshot()
+        self.player.move(dx, dy, self.level)
+
+        # Patrol daemons take 1 step if in Corrupted Dimension
+        if self.level.is_corrupted and self.level.step_daemons():
+            self.game.audio.play_daemon_step()
 
     def handle_events(self, events: list[pygame.event.Event], actions: list[Action]):
         # Fast Developer / Playtester Hotkeys (N: Next Level, P: Prev Level, 1-9: Direct Jump)
@@ -236,6 +285,20 @@ class GameScene(Scene):
                     if lvl_idx < len(LEVELS):
                         self.load_level(lvl_idx)
                         return
+
+        # If intercepted by a daemon, restrict actions to Undo, Restart, or Exit
+        if self.is_caught:
+            for action in actions:
+                if action == Action.UNDO:
+                    self.undo()
+                    return
+                elif action == Action.RESTART:
+                    self.restart_level()
+                    return
+                elif action in (Action.PAUSE, Action.CANCEL):
+                    self.game.change_scene(TitleScene(self.game))
+                    return
+            return
 
         for action in actions:
             # 1. Pause
@@ -261,6 +324,10 @@ class GameScene(Scene):
                         self.level.toggle_shift(self.player.grid_x, self.player.grid_y)
                         self.shift_transition_timer = self.shift_max_frames
                         self.game.audio.play_shift_whoosh()
+
+                        # Sentinels advance when inside the Corrupted Dimension
+                        if self.level.is_corrupted and self.level.step_daemons():
+                            self.game.audio.play_daemon_step()
                     else:
                         # Wall obstruction! Trigger screen shake, red strobe, and error buzzer
                         self.trigger_shift_rejection()
@@ -298,13 +365,23 @@ class GameScene(Scene):
         if self.shift_transition_timer > 0:
             self.shift_transition_timer -= 1
 
-        # 5. Check puzzle interactions (servers, exit door)
-        rebooted = self.level.update(self.player.grid_x, self.player.grid_y)
+        # 5. Check puzzle interactions (plates, servers, exit door)
+        rebooted, plate_clicked = self.level.update(self.player.grid_x, self.player.grid_y)
         if rebooted:
             self.game.audio.play_reboot()
+        if plate_clicked:
+            self.game.audio.play_switch_click()
 
-        # 6. Check if the player stepped into the open exit gateway
-        if self.level.is_won:
+        # 6. Check daemon collision / intercept
+        if not self.is_caught and self.level.is_daemon_at(self.player.grid_x, self.player.grid_y):
+            self.is_caught = True
+            self.game.audio.play_alarm()
+            self.shake_timer = 14
+            self.shake_magnitude = 8
+            self.red_flash_timer = 16
+
+        # 7. Check if the player stepped into the open exit gateway
+        if not self.is_caught and self.level.is_won:
             self.game.change_scene(LevelClearScene(self.game, self.level_index))
 
     def draw(self, screen: pygame.Surface):
@@ -375,6 +452,17 @@ class GameScene(Scene):
         text = f"{self.level.name} | [{dim_name}] | Servers: {rebooted}/{total} | [Z: Undo, R: Restart, ESC: Pause]"
         hud_surf = self.hud_font.render(text, True, COLOR_TEXT)
         screen.blit(hud_surf, (16 + self.shake_offset_x, 12 + self.shake_offset_y))
+
+        # 9. Security Breach Overlay (if intercepted by a daemon)
+        if self.is_caught:
+            alert_overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+            alert_overlay.fill((30, 0, 10, 200))
+            screen.blit(alert_overlay, (0, 0))
+
+            msg1 = self.alert_font.render("SECURITY BREACH: DAEMON INTERCEPT!", True, (255, 60, 90))
+            msg2 = self.hud_font.render("Press [Z] to Rewind Move  |  Press [R] to Restart Sector", True, COLOR_TEXT)
+            screen.blit(msg1, (SCREEN_WIDTH // 2 - msg1.get_width() // 2, SCREEN_HEIGHT // 2 - 30))
+            screen.blit(msg2, (SCREEN_WIDTH // 2 - msg2.get_width() // 2, SCREEN_HEIGHT // 2 + 15))
 
 
 # =============================================================================
