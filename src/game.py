@@ -8,12 +8,13 @@ from src.config import (
 )
 from src.scenes import Scene, TitleScene
 from src.input_handler import InputHandler
+from src.audio import AudioManager
 
 
 class Game:
     """
     Main Game application.
-    Manages display, clock, input translation, and delegates to the active scene.
+    Manages display, clock, input translation, audio, and scene stack.
     """
 
     def __init__(self):
@@ -27,7 +28,8 @@ class Game:
         self.clock = pygame.time.Clock()
         self.running = True
 
-        # 3. Centralized Input Handler (Keyboard + Gamepads)
+        # 3. Audio & Input subsystems
+        self.audio = AudioManager()
         self.input = InputHandler()
 
         # 4. Scene Stack: Starts on the Title Screen

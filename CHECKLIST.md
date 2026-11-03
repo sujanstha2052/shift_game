@@ -15,23 +15,23 @@
 - [x] Create a centralized input handler to support both keyboard and future gamepad controls
 
 ### Movement & Polish
-- [ ] Implement smooth tile interpolation (lerping / tweening) instead of instant coordinate snapping
-- [ ] Add directional facing or squish/stretch animations when moving
-- [ ] Add wall-bump feedback (subtle bounce / sound trigger on invalid move)
+- [x] Implement smooth tile interpolation (lerping / tweening) instead of instant coordinate snapping
+- [x] Add directional facing or squish/stretch animations when moving
+- [x] Add wall-bump feedback (subtle bounce / sound trigger on invalid move)
 
 ### Essential Puzzle Quality-of-Life (Crucial for Jam Reviewers)
-- [ ] Implement **Undo System (`Z` / `U`)** with a state history stack:
-  - [ ] Restore player position
-  - [ ] Restore dimension state (Normal vs. Corrupted)
-  - [ ] Restore rebooted terminal states
-  - [ ] Restore block positions (for upcoming mechanics)
-- [ ] Implement **Instant Restart (`R`)** with zero loading time
-- [ ] Implement **Level Select / Skip Menu** for debugging and playtesting
+- [x] Implement **Undo System (`Z` / `U`)** with a state history stack:
+  - [x] Restore player position
+  - [x] Restore dimension state (Normal vs. Corrupted)
+  - [x] Restore rebooted terminal states
+  - [x] Restore block positions (for upcoming mechanics)
+- [x] Implement **Instant Restart (`R`)** with zero loading time
+- [x] Implement **Level Select / Skip Menu** for debugging and playtesting
 
 ### Shifting Juice & Feedback
-- [ ] Add visual & audio rejection feedback when phasing into a solid wall (screen shake, error buzz, red flash)
-- [ ] Add transition effect when shifting realities (horizontal scanline wipe / chromatic aberration flash)
-- [ ] Add subtle idle pulse / glow animation for terminals
+- [x] Add visual & audio rejection feedback when phasing into a solid wall (screen shake, error buzz, red flash)
+- [x] Add transition effect when shifting realities (horizontal scanline wipe / chromatic aberration flash)
+- [x] Add subtle idle pulse / glow animation for terminals
 
 ---
 
@@ -40,18 +40,18 @@
 *Goal: Introduce new puzzle elements that interact across both dimensions, and build the soundscape.*
 
 ### New Dimension-Interacting Mechanics
-- [ ] **RAM Blocks (Pushable Memory Crates)**:
-  - [ ] Pushable by player if space behind is clear
-  - [ ] Can exist in Normal, Corrupted, or Both dimensions
-  - [ ] Usable to weigh down pressure plates or block laser paths
-- [ ] **Firewalls / Conduits (Laser Barriers)**:
-  - [ ] Laser beams active in one dimension and harmless conduits in the other
-  - [ ] Blocks player movement when active
-- [ ] **Corrupted Daemons / Sentinels**:
-  - [ ] Security subroutines that patrol fixed paths
-  - [ ] Only move / alert when the player is inside the Corrupted Dimension
-- [ ] **Data Pressure Plates**:
-  - [ ] Toggle firewalls or open access gates when pressed by player or RAM blocks
+- [x] **RAM Blocks (Pushable Memory Crates)**:
+  - [x] Pushable by player if space behind is clear
+  - [x] Can exist in Normal, Corrupted, or Both dimensions
+  - [x] Usable to weigh down pressure plates or block laser paths
+- [x] **Firewalls / Conduits (Laser Barriers)**:
+  - [x] Laser beams active in one dimension and harmless conduits in the other
+  - [x] Blocks player movement when active
+- [x] **Corrupted Daemons / Sentinels**:
+  - [x] Security subroutines that patrol fixed paths
+  - [x] Only move / alert when the player is inside the Corrupted Dimension
+- [x] **Data Pressure Plates**:
+  - [x] Toggle firewalls or open access gates when pressed by player or RAM blocks
 
 ### Audio System & Sound Design
 - [ ] Initialize `pygame.mixer` with dedicated channels (Music, SFX, UI)

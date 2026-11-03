@@ -50,6 +50,18 @@ LEVELS = [
         "name": "Sub-Level 02: Memory Leak",
         "player_start": (1, 5),
         "exit_pos": (14, 5),
+        "blocks": [
+            {"x": 3, "y": 6, "dimension": "both"},
+        ],
+        "plates": [
+            {"x": 2, "y": 8, "channel": "A", "dimension": "both"},
+        ],
+        "lasers": [
+            {"x": 7, "y": 8, "channel": "A", "dimension": "corrupt", "orientation": "horizontal"},
+        ],
+        "daemons": [
+            {"patrol_points": [(6, 1), (7, 1), (8, 1), (9, 1), (10, 1)]},
+        ],
         "terminals": [
             {"x": 7, "y": 2, "corrupted": False},
             {"x": 7, "y": 9, "corrupted": True},
