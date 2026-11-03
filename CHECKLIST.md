@@ -15,18 +15,18 @@
 - [x] Create a centralized input handler to support both keyboard and future gamepad controls
 
 ### Movement & Polish
-- [ ] Implement smooth tile interpolation (lerping / tweening) instead of instant coordinate snapping
-- [ ] Add directional facing or squish/stretch animations when moving
-- [ ] Add wall-bump feedback (subtle bounce / sound trigger on invalid move)
+- [x] Implement smooth tile interpolation (lerping / tweening) instead of instant coordinate snapping
+- [x] Add directional facing or squish/stretch animations when moving
+- [x] Add wall-bump feedback (subtle bounce / sound trigger on invalid move)
 
 ### Essential Puzzle Quality-of-Life (Crucial for Jam Reviewers)
-- [ ] Implement **Undo System (`Z` / `U`)** with a state history stack:
-  - [ ] Restore player position
-  - [ ] Restore dimension state (Normal vs. Corrupted)
-  - [ ] Restore rebooted terminal states
+- [x] Implement **Undo System (`Z` / `U`)** with a state history stack:
+  - [x] Restore player position
+  - [x] Restore dimension state (Normal vs. Corrupted)
+  - [x] Restore rebooted terminal states
   - [ ] Restore block positions (for upcoming mechanics)
-- [ ] Implement **Instant Restart (`R`)** with zero loading time
-- [ ] Implement **Level Select / Skip Menu** for debugging and playtesting
+- [x] Implement **Instant Restart (`R`)** with zero loading time
+- [x] Implement **Level Select / Skip Menu** for debugging and playtesting
 
 ### Shifting Juice & Feedback
 - [ ] Add visual & audio rejection feedback when phasing into a solid wall (screen shake, error buzz, red flash)

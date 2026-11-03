@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 import sys
 import pygame
 from src.config import (
@@ -13,6 +14,17 @@ from src.level import Level
 from src.player import Player
 from src.levels_data import LEVELS
 from src.input_handler import Action
+
+
+@dataclass
+class StateSnapshot:
+    """A frozen snapshot of game state at a specific point in time."""
+    player_x: int
+    player_y: int
+    facing_x: int
+    facing_y: int
+    is_corrupted: bool
+    terminals_rebooted: tuple[bool, ...]
 
 
 class Scene:
@@ -52,13 +64,19 @@ class TitleScene(Scene):
         self.show_text = True
 
     def handle_events(self, events: list[pygame.event.Event], actions: list[Action]):
+        # Check raw keyboard events for shortcut 'L'
+        for event in events:
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_l:
+                self.game.change_scene(LevelSelectScene(self.game))
+                return
+
         for action in actions:
             if action == Action.CONFIRM:
-                # Start game! (Enter / Space on keyboard, or 'A' button on Gamepad)
+                # Start game at Level 0
                 self.game.change_scene(GameScene(self.game, level_index=0))
                 return
             elif action in (Action.PAUSE, Action.CANCEL):
-                # Quit game (ESC / Q on keyboard, or 'B' on Gamepad)
+                # Quit game
                 self.game.running = False
                 return
 
@@ -79,13 +97,15 @@ class TitleScene(Scene):
         screen.blit(title_surf, (SCREEN_WIDTH // 2 - title_surf.get_width() // 2, 140))
         screen.blit(tagline_surf, (SCREEN_WIDTH // 2 - tagline_surf.get_width() // 2, 195))
 
-        # Instructions Box (showing both keyboard & controller hints)
+        # Instructions Box (showing controls & sector select)
         ctrl1 = self.sub_font.render("[WASD / D-Pad]     : Move Operator", True, COLOR_TEXT)
         ctrl2 = self.sub_font.render("[SHIFT / Bumpers]  : Phase Dimension", True, (245, 166, 35))
         ctrl3 = self.sub_font.render("[Goal]             : Reboot servers & reach exit", True, COLOR_TERMINAL_REBOOTED)
-        screen.blit(ctrl1, (SCREEN_WIDTH // 2 - 180, 260))
-        screen.blit(ctrl2, (SCREEN_WIDTH // 2 - 180, 290))
-        screen.blit(ctrl3, (SCREEN_WIDTH // 2 - 180, 320))
+        ctrl4 = self.sub_font.render("[L Key]            : Sector Select Menu", True, (130, 180, 255))
+        screen.blit(ctrl1, (SCREEN_WIDTH // 2 - 180, 250))
+        screen.blit(ctrl2, (SCREEN_WIDTH // 2 - 180, 275))
+        screen.blit(ctrl3, (SCREEN_WIDTH // 2 - 180, 300))
+        screen.blit(ctrl4, (SCREEN_WIDTH // 2 - 180, 325))
 
         # Flashing Start Prompt
         if self.show_text:
@@ -113,14 +133,88 @@ class GameScene(Scene):
         start_x, start_y = self.level.player_start
         self.player = Player(start_x, start_y)
         self.hud_font = pygame.font.SysFont("monospace", 16, bold=True)
+        # Undo history stack
+        self.history: list[StateSnapshot] = []
 
     def restart_level(self):
         """Quick restart of current puzzle."""
+        self.load_level(self.level_index)
+
+    def load_level(self, index: int):
+        """Jumps directly to a specified level index (resets position and undo stack)."""
+        self.level_index = index % len(LEVELS)
         self.level = Level(self.level_index)
         start_x, start_y = self.level.player_start
         self.player.reset_position(start_x, start_y)
+        self.history.clear()
+
+    def save_snapshot(self):
+        """Saves current state to history before a move/shift executes."""
+        snapshot = StateSnapshot(
+            player_x=self.player.grid_x,
+            player_y=self.player.grid_y,
+            facing_x=self.player.facing_x,
+            facing_y=self.player.facing_y,
+            is_corrupted=self.level.is_corrupted,
+            terminals_rebooted=tuple(t.rebooted for t in self.level.terminals),
+        )
+        self.history.append(snapshot)
+
+    def undo(self):
+        """Reverts to the most recent state in the history stack."""
+        if not self.history or self.player.is_moving:
+            return
+
+        snapshot = self.history.pop()
+
+        # 1. Restore Player position and orientation
+        self.player.reset_position(snapshot.player_x, snapshot.player_y)
+        self.player.facing_x = snapshot.facing_x
+        self.player.facing_y = snapshot.facing_y
+
+        # 2. Restore Active Dimension
+        self.level.is_corrupted = snapshot.is_corrupted
+
+        # 3. Restore Terminal reboot statuses
+        for terminal, was_rebooted in zip(self.level.terminals, snapshot.terminals_rebooted):
+            terminal.rebooted = was_rebooted
+
+        # 4. Play audio rewind blip
+        self.game.audio.play_undo()
+
+    def try_move_player(self, dx: int, dy: int):
+        """Attempts to move the player; saves undo state on success, or bumps on wall."""
+        if self.player.is_moving:
+            return
+
+        new_x = self.player.grid_x + dx
+        new_y = self.player.grid_y + dy
+
+        if not self.level.is_solid(new_x, new_y):
+            # Save undo snapshot BEFORE updating position
+            self.save_snapshot()
+            self.player.move(dx, dy, self.level)
+        else:
+            # Trigger wall bump and thump sound
+            self.player.move(dx, dy, self.level)
+            self.game.audio.play_bump()
 
     def handle_events(self, events: list[pygame.event.Event], actions: list[Action]):
+        # Fast Developer / Playtester Hotkeys (N: Next Level, P: Prev Level, 1-9: Direct Jump)
+        for event in events:
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_n:
+                    self.load_level((self.level_index + 1) % len(LEVELS))
+                    return
+                elif event.key == pygame.K_p:
+                    self.load_level((self.level_index - 1) % len(LEVELS))
+                    return
+                elif pygame.K_1 <= event.key <= pygame.K_9:
+                    lvl_idx = event.key - pygame.K_1
+                    if lvl_idx < len(LEVELS):
+                        self.load_level(lvl_idx)
+                        return
+
         for action in actions:
             # 1. Pause
             if action == Action.PAUSE:
@@ -132,24 +226,36 @@ class GameScene(Scene):
                 self.restart_level()
                 return
 
-            # 3. Dimension Shift
-            elif action == Action.SHIFT:
-                self.level.toggle_shift(self.player.grid_x, self.player.grid_y)
+            # 3. Undo Step
+            elif action == Action.UNDO:
+                self.undo()
+                return
 
-            # 4. Movement
+            # 4. Dimension Shift (only allowed when stationary)
+            elif action == Action.SHIFT:
+                if not self.player.is_moving:
+                    if self.level.can_shift(self.player.grid_x, self.player.grid_y):
+                        self.save_snapshot()
+                        self.level.toggle_shift(self.player.grid_x, self.player.grid_y)
+
+            # 5. Movement
             elif action == Action.UP:
-                self.player.move(0, -1, self.level)
+                self.try_move_player(0, -1)
             elif action == Action.DOWN:
-                self.player.move(0, 1, self.level)
+                self.try_move_player(0, 1)
             elif action == Action.LEFT:
-                self.player.move(-1, 0, self.level)
+                self.try_move_player(-1, 0)
             elif action == Action.RIGHT:
-                self.player.move(1, 0, self.level)
+                self.try_move_player(1, 0)
 
     def update(self):
+        # 1. Update player smooth sliding interpolation
+        self.player.update()
+
+        # 2. Check puzzle interactions (servers, exit door)
         self.level.update(self.player.grid_x, self.player.grid_y)
 
-        # Check if the player stepped into the open exit gateway
+        # 3. Check if the player stepped into the open exit gateway
         if self.level.is_won:
             self.game.change_scene(LevelClearScene(self.game, self.level_index))
 
@@ -170,7 +276,7 @@ class GameScene(Scene):
         rebooted = sum(1 for t in self.level.terminals if t.rebooted)
         total = len(self.level.terminals)
         dim_name = "CORRUPTED" if self.level.is_corrupted else "NORMAL"
-        text = f"{self.level.name} | [{dim_name}] | Servers: {rebooted}/{total} | [R: Restart, ESC: Pause]"
+        text = f"{self.level.name} | [{dim_name}] | Servers: {rebooted}/{total} | [Z: Undo, R: Restart, ESC: Pause]"
         hud_surf = self.hud_font.render(text, True, COLOR_TEXT)
         screen.blit(hud_surf, (16, 12))
 
@@ -190,6 +296,11 @@ class PauseScene(Scene):
         self.option_font = pygame.font.SysFont("monospace", 18, bold=True)
 
     def handle_events(self, events: list[pygame.event.Event], actions: list[Action]):
+        for event in events:
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_l:
+                self.game.change_scene(LevelSelectScene(self.game))
+                return
+
         for action in actions:
             # ESC or Start or A resumes gameplay
             if action in (Action.PAUSE, Action.CONFIRM):
@@ -218,13 +329,15 @@ class PauseScene(Scene):
         header = self.title_font.render("SYSTEM PAUSED", True, (245, 166, 35))
         opt1 = self.option_font.render("[ESC / A]  Resume", True, COLOR_TEXT)
         opt2 = self.option_font.render("[R / X]    Restart Sector", True, COLOR_TEXT)
-        opt3 = self.option_font.render("[Q / B]    Quit to Title", True, (240, 90, 90))
+        opt3 = self.option_font.render("[L]        Sector Select", True, (130, 180, 255))
+        opt4 = self.option_font.render("[Q / B]    Quit to Title", True, (240, 90, 90))
 
         center_x = SCREEN_WIDTH // 2
-        screen.blit(header, (center_x - header.get_width() // 2, SCREEN_HEIGHT // 2 - 80))
-        screen.blit(opt1, (center_x - opt1.get_width() // 2, SCREEN_HEIGHT // 2 - 10))
-        screen.blit(opt2, (center_x - opt2.get_width() // 2, SCREEN_HEIGHT // 2 + 25))
-        screen.blit(opt3, (center_x - opt3.get_width() // 2, SCREEN_HEIGHT // 2 + 60))
+        screen.blit(header, (center_x - header.get_width() // 2, SCREEN_HEIGHT // 2 - 90))
+        screen.blit(opt1, (center_x - opt1.get_width() // 2, SCREEN_HEIGHT // 2 - 20))
+        screen.blit(opt2, (center_x - opt2.get_width() // 2, SCREEN_HEIGHT // 2 + 15))
+        screen.blit(opt3, (center_x - opt3.get_width() // 2, SCREEN_HEIGHT // 2 + 50))
+        screen.blit(opt4, (center_x - opt4.get_width() // 2, SCREEN_HEIGHT // 2 + 85))
 
 
 # =============================================================================
@@ -268,3 +381,73 @@ class LevelClearScene(Scene):
 
         screen.blit(header, (SCREEN_WIDTH // 2 - header.get_width() // 2, SCREEN_HEIGHT // 2 - 40))
         screen.blit(sub, (SCREEN_WIDTH // 2 - sub.get_width() // 2, SCREEN_HEIGHT // 2 + 10))
+
+
+# =============================================================================
+# 5. LEVEL / SECTOR SELECT SCENE
+# =============================================================================
+class LevelSelectScene(Scene):
+    """
+    Allows the player or playtester to select and jump directly to any sector.
+    """
+    def __init__(self, game):
+        super().__init__(game)
+        self.selected_index = 0
+        self.title_font = pygame.font.SysFont("monospace", 28, bold=True)
+        self.item_font = pygame.font.SysFont("monospace", 18, bold=True)
+        self.hint_font = pygame.font.SysFont("monospace", 14)
+
+    def handle_events(self, events: list[pygame.event.Event], actions: list[Action]):
+        for action in actions:
+            # Navigate Up
+            if action == Action.UP:
+                self.selected_index = (self.selected_index - 1) % len(LEVELS)
+            # Navigate Down
+            elif action == Action.DOWN:
+                self.selected_index = (self.selected_index + 1) % len(LEVELS)
+            # Select / Start Level
+            elif action == Action.CONFIRM:
+                self.game.change_scene(GameScene(self.game, level_index=self.selected_index))
+                return
+            # Back to Title
+            elif action in (Action.PAUSE, Action.CANCEL):
+                self.game.change_scene(TitleScene(self.game))
+                return
+
+    def draw(self, screen: pygame.Surface):
+        screen.fill((16, 20, 28))
+
+        # Title
+        header = self.title_font.render("SECTOR SELECT", True, COLOR_PLAYER)
+        screen.blit(header, (SCREEN_WIDTH // 2 - header.get_width() // 2, 70))
+
+        # Sector List
+        start_y = 150
+        for idx, lvl in enumerate(LEVELS):
+            is_selected = (idx == self.selected_index)
+            prefix = "> " if is_selected else "  "
+            text = f"{prefix}Sector {lvl['id']:02d}: {lvl['name']}"
+
+            color = (52, 211, 153) if is_selected else COLOR_TEXT
+            item_surf = self.item_font.render(text, True, color)
+
+            # Highlight box for selected item
+            if is_selected:
+                box_rect = pygame.Rect(
+                    SCREEN_WIDTH // 2 - 240,
+                    start_y + (idx * 45) - 4,
+                    480,
+                    32,
+                )
+                pygame.draw.rect(screen, (30, 45, 65), box_rect, border_radius=4)
+                pygame.draw.rect(screen, (52, 211, 153), box_rect, width=1, border_radius=4)
+
+            screen.blit(item_surf, (SCREEN_WIDTH // 2 - 220, start_y + (idx * 45)))
+
+        # Hint Footer
+        hint = self.hint_font.render(
+            "[UP/DOWN / D-Pad] Browse  |  [ENTER / A] Launch  |  [ESC / B] Back",
+            True,
+            (140, 155, 175),
+        )
+        screen.blit(hint, (SCREEN_WIDTH // 2 - hint.get_width() // 2, SCREEN_HEIGHT - 60))
