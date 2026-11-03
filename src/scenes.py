@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+import random
 import sys
 import pygame
 from src.config import (
@@ -136,6 +137,27 @@ class GameScene(Scene):
         # Undo history stack
         self.history: list[StateSnapshot] = []
 
+        # Screen Shake & Rejection Feedback
+        self.shake_timer = 0
+        self.shake_magnitude = 0
+        self.shake_offset_x = 0
+        self.shake_offset_y = 0
+        self.red_flash_timer = 0
+        self.blocked_shift_pos: tuple[int, int] | None = None
+        self.render_surf = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
+
+        # Dimension Shift Transition Juice
+        self.shift_transition_timer = 0
+        self.shift_max_frames = 12
+
+    def trigger_shift_rejection(self):
+        """Triggers screen shake, red strobe flash, and buzzer on invalid shift."""
+        self.shake_timer = 10
+        self.shake_magnitude = 6
+        self.red_flash_timer = 12
+        self.blocked_shift_pos = (self.player.grid_x, self.player.grid_y)
+        self.game.audio.play_error_buzz()
+
     def restart_level(self):
         """Quick restart of current puzzle."""
         self.load_level(self.level_index)
@@ -237,6 +259,11 @@ class GameScene(Scene):
                     if self.level.can_shift(self.player.grid_x, self.player.grid_y):
                         self.save_snapshot()
                         self.level.toggle_shift(self.player.grid_x, self.player.grid_y)
+                        self.shift_transition_timer = self.shift_max_frames
+                        self.game.audio.play_shift_whoosh()
+                    else:
+                        # Wall obstruction! Trigger screen shake, red strobe, and error buzzer
+                        self.trigger_shift_rejection()
 
             # 5. Movement
             elif action == Action.UP:
@@ -252,33 +279,102 @@ class GameScene(Scene):
         # 1. Update player smooth sliding interpolation
         self.player.update()
 
-        # 2. Check puzzle interactions (servers, exit door)
-        self.level.update(self.player.grid_x, self.player.grid_y)
+        # 2. Update screen shake
+        if self.shake_timer > 0:
+            self.shake_timer -= 1
+            self.shake_offset_x = random.randint(-self.shake_magnitude, self.shake_magnitude)
+            self.shake_offset_y = random.randint(-self.shake_magnitude, self.shake_magnitude)
+        else:
+            self.shake_offset_x = 0
+            self.shake_offset_y = 0
 
-        # 3. Check if the player stepped into the open exit gateway
+        # 3. Update red flash strobe
+        if self.red_flash_timer > 0:
+            self.red_flash_timer -= 1
+        else:
+            self.blocked_shift_pos = None
+
+        # 4. Update dimension transition timer
+        if self.shift_transition_timer > 0:
+            self.shift_transition_timer -= 1
+
+        # 5. Check puzzle interactions (servers, exit door)
+        rebooted = self.level.update(self.player.grid_x, self.player.grid_y)
+        if rebooted:
+            self.game.audio.play_reboot()
+
+        # 6. Check if the player stepped into the open exit gateway
         if self.level.is_won:
             self.game.change_scene(LevelClearScene(self.game, self.level_index))
 
     def draw(self, screen: pygame.Surface):
-        # 1. Level tiles (walls & background)
-        self.level.draw(screen)
+        # 1. Level tiles (walls & background) drawn onto internal surface
+        self.level.draw(self.render_surf)
 
         # 2. Grid lines
         for x in range(0, SCREEN_WIDTH, TILE_SIZE):
-            pygame.draw.line(screen, COLOR_GRID_LINE, (x, 0), (x, SCREEN_HEIGHT))
+            pygame.draw.line(self.render_surf, COLOR_GRID_LINE, (x, 0), (x, SCREEN_HEIGHT))
         for y in range(0, SCREEN_HEIGHT, TILE_SIZE):
-            pygame.draw.line(screen, COLOR_GRID_LINE, (0, y), (SCREEN_WIDTH, y))
+            pygame.draw.line(self.render_surf, COLOR_GRID_LINE, (0, y), (SCREEN_WIDTH, y))
 
-        # 3. Player
-        self.player.draw(screen)
+        # 3. Dimension Shift Transition (Chromatic Tear & Scanline Beam)
+        if self.shift_transition_timer > 0:
+            t = 1.0 - (self.shift_transition_timer / self.shift_max_frames)
 
-        # 4. HUD
+            # A. Horizontal Glitch Slice Displacement (Chromatic tear)
+            if self.shift_transition_timer > 3:
+                for _ in range(3):
+                    slice_y = random.randint(0, SCREEN_HEIGHT - 30)
+                    slice_h = random.randint(8, 24)
+                    slice_offset = random.choice([-10, -6, 6, 10])
+                    strip = self.render_surf.subsurface((0, slice_y, SCREEN_WIDTH, slice_h)).copy()
+                    self.render_surf.blit(strip, (slice_offset, slice_y))
+
+            # B. Dimension Color Flash (Cyan when entering Normal, Magenta when entering Corrupt)
+            flash_color = (190, 45, 85) if self.level.is_corrupted else (60, 160, 240)
+            alpha = int((self.shift_transition_timer / self.shift_max_frames) * 75)
+            flash_surf = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+            flash_surf.fill((*flash_color, alpha))
+            self.render_surf.blit(flash_surf, (0, 0))
+
+            # C. Sweeping Horizontal Scanline Beam
+            beam_y = int(t * SCREEN_HEIGHT)
+            beam_color = (255, 120, 160) if self.level.is_corrupted else (180, 230, 255)
+            beam_surf = pygame.Surface((SCREEN_WIDTH, 8), pygame.SRCALPHA)
+            beam_surf.fill((*beam_color, 180))
+            self.render_surf.blit(beam_surf, (0, max(0, beam_y - 4)))
+            pygame.draw.line(self.render_surf, (255, 255, 255), (0, beam_y), (SCREEN_WIDTH, beam_y), width=2)
+
+        # 4. Draw red hazard box over player tile if shift was blocked
+        if self.blocked_shift_pos and self.red_flash_timer > 0:
+            bx, by = self.blocked_shift_pos
+            hazard_rect = pygame.Rect(bx * TILE_SIZE, by * TILE_SIZE, TILE_SIZE, TILE_SIZE)
+            hazard_surf = pygame.Surface((TILE_SIZE, TILE_SIZE), pygame.SRCALPHA)
+            hazard_surf.fill((255, 30, 30, 100))
+            self.render_surf.blit(hazard_surf, (bx * TILE_SIZE, by * TILE_SIZE))
+            pygame.draw.rect(self.render_surf, (255, 60, 60), hazard_rect, width=3, border_radius=4)
+
+        # 5. Player
+        self.player.draw(self.render_surf)
+
+        # 6. Red screen flash overlay (fades out as timer reaches 0)
+        if self.red_flash_timer > 0:
+            alpha = int((self.red_flash_timer / 12) * 90)
+            red_flash_surf = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+            red_flash_surf.fill((255, 20, 20, alpha))
+            self.render_surf.blit(red_flash_surf, (0, 0))
+
+        # 7. Blit internal render surface onto actual screen with shake offset!
+        screen.fill((10, 10, 15))
+        screen.blit(self.render_surf, (self.shake_offset_x, self.shake_offset_y))
+
+        # 8. HUD
         rebooted = sum(1 for t in self.level.terminals if t.rebooted)
         total = len(self.level.terminals)
         dim_name = "CORRUPTED" if self.level.is_corrupted else "NORMAL"
         text = f"{self.level.name} | [{dim_name}] | Servers: {rebooted}/{total} | [Z: Undo, R: Restart, ESC: Pause]"
         hud_surf = self.hud_font.render(text, True, COLOR_TEXT)
-        screen.blit(hud_surf, (16, 12))
+        screen.blit(hud_surf, (16 + self.shake_offset_x, 12 + self.shake_offset_y))
 
 
 # =============================================================================

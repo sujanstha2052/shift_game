@@ -64,12 +64,17 @@ class Level:
             return True
         return self.current_map[grid_y][grid_x] == 1
 
-    def update(self, player_x: int, player_y: int):
+    def update(self, player_x: int, player_y: int) -> bool:
+        """Updates terminals and exit; returns True if a server was rebooted this frame."""
+        reboot_occurred = False
         for terminal in self.terminals:
-            terminal.check_interaction(player_x, player_y, self.is_corrupted)
+            if terminal.check_interaction(player_x, player_y, self.is_corrupted):
+                reboot_occurred = True
 
         if self.exit_door.is_entered(player_x, player_y, self.all_terminals_rebooted):
             self.is_won = True
+
+        return reboot_occurred
 
     def draw(self, surface: pygame.Surface):
         bg_color = COLOR_BG_CORRUPT if self.is_corrupted else COLOR_BG_NORMAL

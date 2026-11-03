@@ -29,9 +29,9 @@
 - [x] Implement **Level Select / Skip Menu** for debugging and playtesting
 
 ### Shifting Juice & Feedback
-- [ ] Add visual & audio rejection feedback when phasing into a solid wall (screen shake, error buzz, red flash)
-- [ ] Add transition effect when shifting realities (horizontal scanline wipe / chromatic aberration flash)
-- [ ] Add subtle idle pulse / glow animation for terminals
+- [x] Add visual & audio rejection feedback when phasing into a solid wall (screen shake, error buzz, red flash)
+- [x] Add transition effect when shifting realities (horizontal scanline wipe / chromatic aberration flash)
+- [x] Add subtle idle pulse / glow animation for terminals
 
 ---
 
