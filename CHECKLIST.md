@@ -72,21 +72,21 @@
 *Goal: Craft a satisfying puzzle progression curve, integrate the night shift narrative, and polish visuals.*
 
 ### Sector & Level Design (10–12 Total Levels)
-- [ ] **Sector 1: Sub-Routine (Levels 1–4)**:
-  - [ ] Level 01: "Severed Connection" (Intro to movement & Shift mechanics)
-  - [ ] Level 02: "Memory Leak" (Alternating wall barriers)
-  - [ ] Level 03: "Cache Miss" (Multi-room routing & cross-dimension terminals)
-  - [ ] Level 04: "Stack Overflow" (Tight corridors requiring precision shifts)
-- [ ] **Sector 2: Memory Heap (Levels 5–8)**:
-  - [ ] Level 05: "Pointer Arithmetic" (Introduction to pushable RAM blocks)
-  - [ ] Level 06: "Firewall Protocol" (Laser gates and toggle switches)
-  - [ ] Level 07: "Defrag Sequence" (Cross-dimensional block placement)
-  - [ ] Level 08: "Buffer Overflow" (Combining blocks, lasers, and terminals)
-- [ ] **Sector 3: Kernel Core (Levels 9–12)**:
-  - [ ] Level 09: "Daemon Patrol" (Introducing stealth around corrupted sentinels)
-  - [ ] Level 10: "Race Condition" (Timing shifts around moving hazards)
-  - [ ] Level 11: "Deadlock" (Complex multi-stage spatial reasoning)
-  - [ ] Level 12: "Root Access" (Final master puzzle combining all mechanics)
+- [x] **Sector 1: Sub-Routine (Levels 1–4)**:
+  - [x] Level 01: "Severed Connection" (Intro to movement & Shift mechanics)
+  - [x] Level 02: "Memory Leak" (Alternating wall barriers)
+  - [x] Level 03: "Cache Miss" (Multi-room routing & cross-dimension terminals)
+  - [x] Level 04: "Stack Overflow" (Tight corridors requiring precision shifts)
+- [x] **Sector 2: Memory Heap (Levels 5–8)**:
+  - [x] Level 05: "Pointer Arithmetic" (Introduction to pushable RAM blocks)
+  - [x] Level 06: "Firewall Protocol" (Laser gates and toggle switches)
+  - [x] Level 07: "Defrag Sequence" (Cross-dimensional block placement)
+  - [x] Level 08: "Buffer Overflow" (Combining blocks, lasers, and terminals)
+- [x] **Sector 3: Kernel Core (Levels 9–12)**:
+  - [x] Level 09: "Daemon Patrol" (Introducing stealth around corrupted sentinels)
+  - [x] Level 10: "Race Condition" (Timing shifts around moving hazards)
+  - [x] Level 11: "Deadlock" (Complex multi-stage spatial reasoning)
+  - [x] Level 12: "Root Access" (Final master puzzle combining all mechanics)
 
 ### Narrative & Theme Integration
 - [ ] Add opening intro briefing ("OmniCorp Graveyard Shift Notice: Mainframe Breach")
