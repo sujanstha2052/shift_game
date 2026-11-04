@@ -49,9 +49,9 @@ class TitleScene(Scene):
 
         for action in actions:
             if action == Action.CONFIRM:
-                # Start game at Level 0
-                from src.scenes.game_scene import GameScene
-                self.game.change_scene(GameScene(self.game, level_index=0))
+                # Proceed to Intro Briefing
+                from src.scenes.intro_scene import IntroScene
+                self.game.change_scene(IntroScene(self.game))
                 return
             elif action in (Action.PAUSE, Action.CANCEL):
                 # Quit game

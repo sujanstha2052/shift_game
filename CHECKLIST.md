@@ -89,16 +89,16 @@
   - [x] Level 12: "Root Access" (Final master puzzle combining all mechanics)
 
 ### Narrative & Theme Integration
-- [ ] Add opening intro briefing ("OmniCorp Graveyard Shift Notice: Mainframe Breach")
-- [ ] Add humorous sysadmin email / ticket logs displayed upon rebooting servers:
-  - [ ] *"Ticket #102: Printer in accounting is summoning demons again."*
-  - [ ] *"Ticket #404: Who pushed directly to production on Friday evening?"*
-- [ ] Add ending sequence ("Shift Complete: Clocking Out").
+- [x] Add opening intro briefing ("OmniCorp Graveyard Shift Notice: Mainframe Breach")
+- [x] Add humorous sysadmin email / ticket logs displayed upon rebooting servers:
+  - [x] *"Ticket #102: Printer in accounting is summoning demons again."*
+  - [x] *"Ticket #404: Who pushed directly to production on Friday evening?"*
+- [x] Add ending sequence ("Shift Complete: Clocking Out").
 
 ### Visual Juicing & CRT Shader
-- [ ] Particle burst when rebooting a terminal
-- [ ] Floating dust / digital glitch bits in corrupted dimension
-- [ ] CRT scanline overlay or subtle screen vignette toggle in settings
+- [x] Particle burst when rebooting a terminal
+- [x] Floating dust / digital glitch bits in corrupted dimension
+- [x] CRT scanline overlay or subtle screen vignette toggle in settings
 
 ---
 

@@ -25,7 +25,7 @@ class LevelClearScene(Scene):
         # Pre-render texts for performance
         if self.is_final:
             self.header_surf = self.font.render("ALL SERVERS RESTORED! SHIFT COMPLETE!", True, COLOR_EXIT_OPEN)
-            self.sub_surf = self.sub_font.render("Press [ENTER / A] to return to Title Screen", True, COLOR_TEXT)
+            self.sub_surf = self.sub_font.render("Press [ENTER / A] to Clock Out", True, COLOR_TEXT)
         else:
             self.header_surf = self.font.render("SECTOR CLEARED! ACCESS GRANTED", True, COLOR_EXIT_OPEN)
             self.sub_surf = self.sub_font.render(
@@ -40,8 +40,8 @@ class LevelClearScene(Scene):
         for action in actions:
             if action == Action.CONFIRM:
                 if self.is_final:
-                    from src.scenes.title_scene import TitleScene
-                    self.game.change_scene(TitleScene(self.game))
+                    from src.scenes.ending_scene import EndingScene
+                    self.game.change_scene(EndingScene(self.game))
                 else:
                     from src.scenes.game_scene import GameScene
                     next_idx = self.completed_level_index + 1

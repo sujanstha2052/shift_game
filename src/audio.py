@@ -42,6 +42,7 @@ class AudioManager:
         self.daemon_step_sound = self._create_daemon_step_sound() if self.enabled else None
         self.alarm_sound = self._create_alarm_sound() if self.enabled else None
         self.fanfare_sound = self._create_victory_fanfare() if self.enabled else None
+        self.key_click_sound = self._create_key_click_sound() if self.enabled else None
 
         # Generate synchronized background music loops
         if self.enabled:
@@ -225,6 +226,24 @@ class AudioManager:
         except Exception:
             return None
 
+    def _create_key_click_sound(self) -> pygame.mixer.Sound | None:
+        """Subtle mechanical terminal key click for teletype text."""
+        try:
+            sample_rate = 44100
+            duration = 0.015
+            total_samples = int(sample_rate * duration)
+            raw = bytearray()
+            for i in range(total_samples):
+                t = i / sample_rate
+                prog = i / total_samples
+                freq = 1400.0 - (600.0 * prog)
+                vol = (1.0 - prog) ** 2.0
+                val = int(32767 * 0.12 * vol * math.sin(2.0 * math.pi * freq * t))
+                raw.extend(struct.pack("<h", val))
+            return pygame.mixer.Sound(buffer=bytes(raw))
+        except Exception:
+            return None
+
     # =========================================================================
     # DUAL-DIMENSION BGM GENERATION
     # =========================================================================
@@ -351,6 +370,10 @@ class AudioManager:
     def play_alarm(self):
         if self.enabled and self.alarm_sound:
             self.alarm_sound.play()
+
+    def play_key_click(self):
+        if self.enabled and self.key_click_sound:
+            self.key_click_sound.play()
 
     def play_victory_fanfare(self):
         if self.enabled and self.fanfare_sound:

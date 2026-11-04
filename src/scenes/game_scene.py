@@ -13,6 +13,8 @@ from src.player import Player
 from src.levels_data import LEVELS
 from src.input_handler import Action
 from src.scenes.base import Scene, StateSnapshot
+from src.ticket_system import TicketPopup
+from src.particles import ParticleSystem
 
 
 class GameScene(Scene):
@@ -47,6 +49,12 @@ class GameScene(Scene):
 
         # Daemon Detection State
         self.is_caught = False
+
+        # IT Support Ticket / Sysadmin Toast Notifications
+        self.ticket_popup = TicketPopup()
+
+        # Visual Particle System (Terminal bursts, data sparks)
+        self.particles = ParticleSystem()
 
         # --- Performance Optimizations: Persistent Surfaces ---
         self.render_surf = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
@@ -85,6 +93,7 @@ class GameScene(Scene):
         start_x, start_y = self.level.player_start
         self.player.reset_position(start_x, start_y)
         self.history.clear()
+        self.particles.clear()
         self.is_caught = False
 
     def save_snapshot(self):
@@ -163,6 +172,7 @@ class GameScene(Scene):
                 # Successful push! Save undo, move player into vacated tile, play clunk
                 self.save_snapshot()
                 self.player.move(dx, dy, self.level)
+                self.game.stats["moves"] += 1
                 self.game.audio.play_block_push()
 
                 # Patrol daemons take 1 step if in Corrupted Dimension
@@ -177,6 +187,7 @@ class GameScene(Scene):
         # 4. Open Floor: standard movement
         self.save_snapshot()
         self.player.move(dx, dy, self.level)
+        self.game.stats["moves"] += 1
 
         # Patrol daemons take 1 step if in Corrupted Dimension
         if self.level.is_corrupted and self.level.step_daemons():
@@ -191,6 +202,9 @@ class GameScene(Scene):
                     return
                 elif event.key == pygame.K_p:
                     self.load_level((self.level_index - 1) % len(LEVELS))
+                    return
+                elif event.key == pygame.K_c:
+                    self.game.toggle_crt_filter()
                     return
                 elif pygame.K_1 <= event.key <= pygame.K_9:
                     lvl_idx = event.key - pygame.K_1
@@ -236,6 +250,7 @@ class GameScene(Scene):
                     if self.level.can_shift(self.player.grid_x, self.player.grid_y):
                         self.save_snapshot()
                         self.level.toggle_shift(self.player.grid_x, self.player.grid_y)
+                        self.game.stats["shifts"] += 1
                         self.shift_transition_timer = self.shift_max_frames
                         self.game.audio.play_shift_whoosh()
                         # Crossfade BGM layer to matching reality in-beat!
@@ -284,9 +299,18 @@ class GameScene(Scene):
         # 5. Check puzzle interactions (plates, servers, exit door)
         rebooted, plate_clicked = self.level.update(self.player.grid_x, self.player.grid_y)
         if rebooted:
+            self.game.stats["reboots"] += 1
             self.game.audio.play_reboot()
+            self.ticket_popup.trigger()
+            center_x = (self.player.grid_x * TILE_SIZE) + (TILE_SIZE // 2)
+            center_y = (self.player.grid_y * TILE_SIZE) + (TILE_SIZE // 2)
+            self.particles.emit_reboot_burst(center_x, center_y)
         if plate_clicked:
             self.game.audio.play_switch_click()
+
+        # Update visual particles and IT ticket notification toast
+        self.particles.update(is_corrupted=self.level.is_corrupted)
+        self.ticket_popup.update()
 
         # 6. Check daemon collision / intercept
         if not self.is_caught and self.level.is_daemon_at(self.player.grid_x, self.player.grid_y):
@@ -387,7 +411,10 @@ class GameScene(Scene):
         # 5. Player sprite & directional eye visor
         self.player.draw(self.render_surf)
 
-        # 6. Red screen flash overlay
+        # 6. Glowing digital particles (terminal reboot bursts)
+        self.particles.draw(self.render_surf)
+
+        # 7. Red screen flash overlay
         self._draw_red_flash(self.render_surf)
 
         # 7. Blit internal surface onto screen with camera shake offset
@@ -399,3 +426,6 @@ class GameScene(Scene):
 
         # 9. Security Breach Overlay
         self._draw_breach_overlay(screen)
+
+        # 10. IT Support Ticket Toast
+        self.ticket_popup.draw(screen)

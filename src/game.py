@@ -32,7 +32,15 @@ class Game:
         self.audio = AudioManager()
         self.input = InputHandler()
 
-        # 4. Scene Stack: Starts on the Title Screen
+        # 4. Session Statistics (Tracks overall graveyard shift performance)
+        self.stats = {"moves": 0, "shifts": 0, "reboots": 0}
+
+        # 5. Visual Shaders & CRT Filter Overlay
+        from src.crt_filter import create_crt_overlay
+        self.crt_filter_enabled: bool = True
+        self.crt_overlay: pygame.Surface | None = create_crt_overlay(SCREEN_WIDTH, SCREEN_HEIGHT)
+
+        # 6. Scene Stack: Starts on the Title Screen
         self.scene_stack: list[Scene] = [TitleScene(self)]
 
     @property
@@ -67,13 +75,19 @@ class Game:
         # Delegate to the active scene
         self.current_scene.handle_events(events, actions)
 
+    def toggle_crt_filter(self):
+        """Toggles the retro CRT scanline & vignette shader on or off."""
+        self.crt_filter_enabled = not self.crt_filter_enabled
+
     def update(self):
         """Updates the active scene."""
         self.current_scene.update()
 
     def draw(self):
-        """Draws the active scene and flips the display."""
+        """Draws the active scene, blits CRT scanlines if enabled, and flips display."""
         self.current_scene.draw(self.screen)
+        if self.crt_filter_enabled and self.crt_overlay:
+            self.screen.blit(self.crt_overlay, (0, 0))
         pygame.display.flip()
 
     def run(self):

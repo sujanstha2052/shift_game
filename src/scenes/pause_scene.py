@@ -34,10 +34,14 @@ class PauseScene(Scene):
 
     def handle_events(self, events: list[pygame.event.Event], actions: list[Action]):
         for event in events:
-            if event.type == pygame.KEYDOWN and event.key == pygame.K_l:
-                from src.scenes.level_select_scene import LevelSelectScene
-                self.game.change_scene(LevelSelectScene(self.game))
-                return
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_l:
+                    from src.scenes.level_select_scene import LevelSelectScene
+                    self.game.change_scene(LevelSelectScene(self.game))
+                    return
+                elif event.key == pygame.K_c:
+                    self.game.toggle_crt_filter()
+                    return
 
         for action in actions:
             # ESC, Start, or A resumes gameplay
@@ -64,8 +68,13 @@ class PauseScene(Scene):
 
         # 3. Pause menu text
         center_x = SCREEN_WIDTH // 2
-        screen.blit(self.header_surf, (center_x - self.header_surf.get_width() // 2, SCREEN_HEIGHT // 2 - 90))
-        screen.blit(self.opt1_surf, (center_x - self.opt1_surf.get_width() // 2, SCREEN_HEIGHT // 2 - 20))
-        screen.blit(self.opt2_surf, (center_x - self.opt2_surf.get_width() // 2, SCREEN_HEIGHT // 2 + 15))
-        screen.blit(self.opt3_surf, (center_x - self.opt3_surf.get_width() // 2, SCREEN_HEIGHT // 2 + 50))
-        screen.blit(self.opt4_surf, (center_x - self.opt4_surf.get_width() // 2, SCREEN_HEIGHT // 2 + 85))
+        crt_state = "ON" if self.game.crt_filter_enabled else "OFF"
+        crt_color = (78, 201, 138) if self.game.crt_filter_enabled else (160, 175, 195)
+        crt_surf = self.option_font.render(f"[C]        CRT Filter: {crt_state}", True, crt_color)
+
+        screen.blit(self.header_surf, (center_x - self.header_surf.get_width() // 2, SCREEN_HEIGHT // 2 - 110))
+        screen.blit(self.opt1_surf, (center_x - self.opt1_surf.get_width() // 2, SCREEN_HEIGHT // 2 - 40))
+        screen.blit(self.opt2_surf, (center_x - self.opt2_surf.get_width() // 2, SCREEN_HEIGHT // 2 - 5))
+        screen.blit(crt_surf, (center_x - crt_surf.get_width() // 2, SCREEN_HEIGHT // 2 + 30))
+        screen.blit(self.opt3_surf, (center_x - self.opt3_surf.get_width() // 2, SCREEN_HEIGHT // 2 + 65))
+        screen.blit(self.opt4_surf, (center_x - self.opt4_surf.get_width() // 2, SCREEN_HEIGHT // 2 + 100))
