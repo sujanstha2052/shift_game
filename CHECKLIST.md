@@ -54,16 +54,16 @@
   - [x] Toggle firewalls or open access gates when pressed by player or RAM blocks
 
 ### Audio System & Sound Design
-- [ ] Initialize `pygame.mixer` with dedicated channels (Music, SFX, UI)
-- [ ] Create / source chiptune & retro sound effects:
-  - [ ] Player step click
-  - [ ] Dimension shift sub-bass whoosh / phase sound
-  - [ ] Terminal reboot success chime
-  - [ ] Error / invalid shift buzz
-  - [ ] Sector cleared fanfare
-- [ ] Add background ambient synth tracks:
-  - [ ] Normal Dimension theme (calm, rhythmic electronic hum)
-  - [ ] Corrupted Dimension filter (muffled low-pass or glitched version of the track)
+- [x] Initialize `pygame.mixer` with dedicated channels (Music, SFX, UI)
+- [x] Create / source chiptune & retro sound effects:
+  - [x] Player step click
+  - [x] Dimension shift sub-bass whoosh / phase sound
+  - [x] Terminal reboot success chime
+  - [x] Error / invalid shift buzz
+  - [x] Sector cleared fanfare
+- [x] Add background ambient synth tracks:
+  - [x] Normal Dimension theme (calm, rhythmic electronic hum)
+  - [x] Corrupted Dimension filter (muffled low-pass or glitched version of the track)
 
 ---
 
